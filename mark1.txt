@@ -1,0 +1,26 @@
+#06/10/2023 To Compile R from source without OpenMP:
+./configure --disable-openmp
+
+#12/10/2023
+#Due to new NVIDIA weirdness
+#When installing pbd Packages, run as root
+sudo ~/R-4.3.2/bin/R
+library(remotes)
+install_github("RBigData/pbdMPI")
+
+#Also, when running Rscript with pbd  packages
+sudo mpirun --allow-run-as-root -np 8 ~/R-4.3.2/bin/Rscript pbd1.in >eh3.tmp
+
+#12/14/2023
+#install old maptools
+install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
+n
+#12/25/2023
+#to run the Batch
+sudo ~/R-4.3.2/bin/R CMD BATCH se185wq.in xmas1a.out &
+#to run the MPI/CUDA
+ sudo mpirun --allow-run-as-root -np 8 ~/R-4.3.2/bin/Rscript se28wq.in >xmas2b.out
+ 
+#to run Windows only full set
+#Use se19wq.in 
+sudo ~/R-4.3.2/bin/R CMD BATCH se19wq.in window1.out &

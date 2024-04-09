@@ -1,0 +1,187 @@
+rm(list=ls())
+options("sp_evolution_status"=2)
+ptm <- proc.time()
+print("pre init")
+print(date())
+library(methods)
+library(sp)
+library(sf)
+library(gstat)
+library(spacetime)
+library(maptools)
+print("space")
+library(maps)
+library(xts)
+library(automap)
+print("auto")
+
+library(pbdDMAT)
+print("done DMAT")
+library("rmpi1")
+print("done rmpi1")
+library(data.table)
+dyn.load("warmup4.so")
+dyn.load("subcus2.so")
+
+
+
+init.grid()
+
+     
+val1 <- ddmatrix(fread("file5.txt")$V1,ncol=1)
+print("my stuff")
+comm.print(comm.rank())
+#n0 <- nrow(val1)/12
+n2 <- length(val1)
+n3 <- n2^2
+#n4 <- 6*n0
+n4 <- 80
+cv1a <- numeric(length=n3)
+
+print("made it this far")
+print(n2)
+
+if(comm.rank()!=0) {
+     bigsuma <- NULL
+     lilsuma <- NULL
+     dsol <- NULL
+     biga <- NULL
+} else {		   
+  print("in rank 0")
+
+     print("pre alloc1")
+#     dbigsuma <- .Fortran("alloc1a",bigsum=as.single(cv1a),n1=as.integer(n2),n2=as.integer(n3))[[1]]
+      biga <- .Fortran("warm4",bigsum=as.single(cv1a),n1=as.integer(n2),n2=as.integer(n3))[[1]]
+     
+     print("post alloc1")
+
+
+     print("biga")
+
+
+     print("bigb")
+     print(date())
+     print(str(biga))
+     print(max(biga))
+     print(min(biga))
+     bigb <- matrix(biga,nrow=n2,ncol=n2)     
+#     rm(biga)
+     print("built matrix")
+     print("time stuff")
+     print(date())
+     Bd <- base::diag(nrow=n2,ncol=n2)
+     B_a <- as.vector(Bd)
+#      dsol <- solve(bigb)
+print("time stuff")
+print(date())
+xtest1 <- .Fortran("cus2a",m=as.integer(n2),A_a=as.single(biga),
+       B_a=as.single(B_a))[[3]]
+       print("xtest")
+       print(str(xtest1))
+
+dsol <- matrix(xtest1,nrow=n2,ncol=n2)
+     
+      print(date())
+
+      print("mdsol")
+      print(max(dsol))
+      print(min(dsol))
+
+
+
+#     print(dsol[1:8,1:8])
+     
+
+     print(date())
+
+
+
+
+
+cv2a <- numeric(length=n2*n4)
+     dlilsuma <- .Fortran("alloc2a",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsuma[1:10])
+     print("after a2")
+     dlilsumb <- .Fortran("alloc2b",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsumb[1:10])
+     print("after b2")
+     dlilsumc <- .Fortran("alloc2c",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsumc[1:10])
+     bigb <- matrix(dlilsuma+dlilsumb+dlilsumc,nrow=n4,ncol=n2,byrow=TRUE)
+     print(bigb[1:5,1:5])
+
+print("alloc2")
+
+lilsuma <- bigb[1:n4,1:n2]
+print("back from all")
+rm(cv2a)
+rm(dlilsuma)
+rm(dlilsumb)
+rm(dlilsumc)
+rm(bigb)
+
+print(lilsuma[1:5,1:5])
+     print("real things")
+
+}
+
+
+	dsol1 <- as.ddmatrix(dsol)
+	lilsum <- as.ddmatrix(lilsuma)
+
+	print(comm.rank())
+	print("distribute")
+     rm(cv1a)
+print("b4 if")
+
+
+
+ones <- ddmatrix(rep(1,n2),nrow=n2,ncol=1)
+
+
+bigt <- t(ones) %*% dsol1 %*% ones
+bigt.sol <- solve(bigt)
+
+
+bigz <- t(ones) %*% dsol1 %*% val1
+print("bigz")
+print(str(bigz))
+
+mu1 <- bigt.sol %*% bigz
+
+print("mu1")
+print(str(mu1))
+
+
+mu2 <- as.vector(mu1)
+big.mu <- ddmatrix(rep(mu2,n2),nrow=n2,ncol=1)
+lil.mu <- ddmatrix(rep(mu2,n4),nrow=n4,ncol=1)
+
+zsub <- val1 - big.mu
+
+dright <- (lilsum) %*% dsol1 %*% zsub
+
+dfin <- lil.mu + dright
+
+
+
+bdfin <- as.vector(dfin)
+
+
+finalize()
+print(bdfin)
+write(bdfin,file="file8.txt",ncol=1)
+
+print(date())
+print(proc.time()-ptm)
+
+
+
+
+
+
+
+
+
+
+

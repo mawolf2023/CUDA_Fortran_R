@@ -1,0 +1,197 @@
+rm(list=ls())
+options("sp_evolution_status"=2)
+print(date())
+library(methods)
+library(sp)
+library(gstat)
+library(sf)
+library(spacetime)
+library(maptools)
+library(maps)
+library(xts)
+library(automap)
+library(pbdDMAT)
+
+
+#Set up data set
+data("wind")
+wind.loc$y = as.numeric(char2dms(as.character(wind.loc[["Latitude"]])))
+wind.loc$x = as.numeric(char2dms(as.character(wind.loc[["Longitude"]])))
+coordinates(wind.loc) = ~x+y
+proj4string(wind.loc) = "+proj=longlat +datum=WGS84"
+wind$time = ISOdate(wind$year+1900, wind$month, wind$day)
+wind$jday = as.numeric(format(wind$time, '%j'))
+stations = 4:15
+windsqrt = sqrt(0.5148 * as.matrix(wind[stations])) # knots -> m/s
+Jday = 1:366
+windsqrt = windsqrt - mean(windsqrt)
+daymeans = sapply(split(windsqrt, wind$jday), mean)
+meanwind = lowess(daymeans ~ Jday, f = 0.1)$y[wind$jday]
+velocities = apply(windsqrt, 2, function(x) { x - meanwind })
+wind.loc = wind.loc[match(names(wind[4:15]), wind.loc$Code),]
+pts = coordinates(wind.loc[match(names(wind[4:15]), wind.loc$Code),])
+rownames(pts) = wind.loc$Station
+pts = SpatialPoints(pts, CRS("+proj=longlat +datum=WGS84"))
+utm29 = CRS("+proj=utm +zone=29 +datum=WGS84")
+pts = spTransform(pts, utm29)
+print("velocities")
+print(str(velocities))
+wind.data = stConstruct(velocities, space = list(values = 1:ncol(velocities)), 
+  time = wind$time, SpatialObj = pts, interval = TRUE)
+  print("wind.data")
+  print(str(wind.data))
+m = map2SpatialLines(
+  map("world", xlim = c(-11,-5.4), ylim = c(51,55.5), plot=F))
+proj4string(m) = "+proj=longlat +datum=WGS84"
+m = spTransform(m, utm29)
+grd = SpatialPixels(SpatialPoints(makegrid(m, n = 6)),
+  proj4string = proj4string(m))
+print(str(grd))
+
+###################################################
+start_date <- "1961-01-01"
+end_date <- "1961-03-31"
+wind.data = wind.data[, paste(start_date,end_date,sep="::")]
+n = length(wind.data$values)/12
+tgrd = xts(1:10, seq(min(index(wind.data)), max(index(wind.data)), length=10))
+pred.grd = STF(grd, tgrd)
+print(str(pred.grd))
+print(pred.grd@sp@coords)
+print(index(pred.grd@time))
+n1a <- length(wind.data$values)
+x1a <- 1:n1a
+y1a <- seq(1,by=2,length=n1a)
+
+
+
+
+#Create temp data set for variogram
+test1.df <- data.frame(values=wind.data$values,x=x1a,y=y1a)
+coordinates(test1.df) <- ~x+y
+
+
+#Space vgm
+sp1a <- autofitVariogram(values~1,test1.df,start_vals=c(NA,750000,NA),
+     model=c("Exp","Sph","Gau"))
+
+
+#Time vgm
+tim1a <- autofitVariogram(values~1,test1.df,start_vals=c(NA,129600,NA),
+      model=sp1a$var_model$model[2])
+
+
+#Joint vgm
+jt1a <-	autofitVariogram(values~1,test1.df,start_vals=c(NA,NA,NA),
+     model=c("Exp","Sph","Gau"))
+
+
+#Construct sample variogram
+var <- variogramST(values~1,wind.data,na.omit=TRUE)
+warnings()
+
+
+
+mod <- rep(999999,3)
+fin_mod <- NULL
+
+#Construct fit.StVariograms
+
+sep1a <- vgmST("separable",space=vgm(sp1a$var_model$psill[2],
+      sp1a$var_model$model[2],sp1a$var_model$range[2],sp1a$var_model$psill[1]),
+      time=vgm(tim1a$var_model$psill[2],tim1a$var_model$model[2],
+      tim1a$var_model$range[2],tim1a$var_model$psill[1]),
+      sill=50)
+
+sep1a_fin <- try(fit.StVariogram(var,sep1a),silent=TRUE)
+	  if(!inherits(sep1a_fin,"try-error")) {
+	       mod[1] <- attr(sep1a_fin,"MSE")
+	  }
+
+
+prodSum1a <- vgmST("productSum",space=vgm(sp1a$var_model$psill[2],
+      sp1a$var_model$model[2],sp1a$var_model$range[2],sp1a$var_model$psill[1]),
+      time=vgm(tim1a$var_model$psill[2],tim1a$var_model$model[2],
+      tim1a$var_model$range[2],tim1a$var_model$psill[1]),
+      k=5)
+
+
+prodSum1a_fin <- try(fit.StVariogram(var,prodSum1a),silent=TRUE)
+	     if(!inherits(prodSum1a_fin,"try-error")) {
+	     	mod[2] <- attr(prodSum1a_fin,"MSE")
+		}
+
+
+sumMet1a <- vgmST("sumMetric",space=vgm(sp1a$var_model$psill[2],
+      sp1a$var_model$model[2],sp1a$var_model$range[2],sp1a$var_model$psill[1]),
+      time=vgm(tim1a$var_model$psill[2],tim1a$var_model$model[2],
+      tim1a$var_model$range[2],tim1a$var_model$psill[1]),
+      joint=vgm(jt1a$var_model$psill[2],jt1a$var_model$model[2],
+      jt1a$var_model$range[2],jt1a$var_model$psill[1]),stAni=10)
+
+
+
+sumMet1a_fin <- try(fit.StVariogram(var,sumMet1a,fit.method=11),silent=TRUE)
+	     if(!inherits(sumMet1a_fin,"try-error")) {
+	     	mod[3] <- attr(sumMet1a_fin,"MSE")
+		}
+
+print(sumMet1a_fin)
+
+fin1a <- which.min(mod)
+#      if(fin1a==1)fin_mod <- sep1a_fin
+#      if(fin1a==2)fin_mod <- prodSum1a_fin
+#      if(fin1a==3)fin_mod <- sumMet1a_fin
+fin_mod <- sumMet1a_fin
+
+print(str(fin_mod))
+fm1a <- c(as.character(fin_mod$space$model[2]),as.character(fin_mod$time$model[2]),as.character(fin_mod$joint$model[2]))
+write(fm1a,file="file1.txt",ncol=1)
+file1f <-extractPar(fin_mod)
+write(file1f,file="file1.txt",ncol=1,append=TRUE)
+
+print("bigtime")
+print(length(wind.data@time))
+print(dim(wind.data@sp@coords)[1])
+bigl1a <- rep(wind.data@sp@coords[,1],each=length(wind.data@time))
+bigl1b <- rep(wind.data@sp@coords[,2],each=length(wind.data@time))
+bigloc <- cbind(bigl1a,bigl1b)
+print(bigloc[1:15,])
+print("bigloc")
+print(dim(bigloc))
+options(scipen=3)
+write(t(bigloc),file="file2.txt",ncol=2)
+bigtim <- rep(index(wind.data@time),dim(wind.data@sp@coords)[1])
+write(as.character(bigtim),file="file10.txt",ncol=1)
+write(bigtim,file="file11.txt",ncol=1)
+
+
+
+#time component
+grd1a <- rep(pred.grd@sp@coords[,1],each=5)
+grd1b <- rep(pred.grd@sp@coords[,2],each=5)
+grdloc <- cbind(grd1a,grd1b)
+write(t(grdloc),file="file4.txt",ncol=2)
+timloc <- rep(index(pred.grd@time),16)
+print("timloc")
+print(str(timloc))
+print(index(pred.grd@time))
+write(as.character(timloc),file="file9.txt",ncol=1)
+write(timloc,file="file12.txt",ncol=1)
+
+write(wind.data$values,file="file5.txt",ncol=1)
+
+
+
+
+print(date())
+
+
+
+
+
+
+
+
+
+
+
