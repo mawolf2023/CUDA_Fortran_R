@@ -1,0 +1,44 @@
+#4/12/2024
+#compile R from source (R-4.3.3)
+#go to dir R-4.3.3
+./configure --disable-openmp --with-readline=no
+make
+sudo make install
+
+#Now start to load packages
+sudo ~/R-4.3.3/bin/R
+install.packages("remotes",depen=TRUE)
+library(remotes)
+install_github("RBigData/pbdMPI")
+install_github("RBigData/pbdBASE")
+install_github("RBigData/pbdSLAP")
+q()
+
+#Install the updated pbdDMAT
+ sudo ~/R-4.3.3/bin/R CMD INSTALL pbdDMAT_0.5-2.tar.gz
+
+#now it's time to install the remaining packages
+#install old maptools
+sudo ~/R-4.3.3/bin/R
+install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
+#This next step takes a really long time
+install.packages(c("sp","gstat","spacetime","xts","automap"),depen=TRUE)
+#this one is pretty long too
+install.packages(c("sf","maps","data.table"),depen=TRUE)
+q()
+
+#Compile the CUDA Fortran
+nvfortran subcus2.F90 -c -fPIC -o subcus2.o -cudalib=cusolver, cublas -cuda
+nvfortran subcus2.o -shared -o subcus2.so -cudalib=cusolver,cublas -cuda
+nvfortran warmup4.F90 -c -fPIC -o warmup4.o -cudalib=cusolver, cublas -cuda
+nvfortran warmup4.o -shared -o warmup4.so -cudalib=cusolver,cublas -cuda
+
+#install a "home grown" package
+sudo ~/R-4.3.3/bin/R CMD INSTALL rmpi1_0.0.0.9000.tar.gz
+
+#Now run those bad boys:
+#Part 1
+sudo ~/R-4.3.3/bin/R CMD BATCH se185wq.in xmas1a.out &
+#Part 2
+sudo mpirun --allow-run-as-root -np 8 ~/R-4.3.3/bin/Rscript se28wq.in >xmas2b.out
+
