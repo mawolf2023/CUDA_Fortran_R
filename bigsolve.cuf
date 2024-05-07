@@ -1,0 +1,101 @@
+program bigsolve
+!subroutine cus2a(m,A_a,B_a)
+!Compilation example: 'nvfortran cus2.F90 -o cus2 -cudalib=cusolver -cuda'
+use cudafor !has to go first
+use cusolverDn
+    implicit none
+integer :: info
+ !   integer,parameter :: q2 = SELECTED_REAL_KIND(15,305)
+    integer, parameter :: m=35064
+    real, device, dimension(m,m) :: A_d,B_d
+    real, dimension(m,m) :: A,B
+    real, dimension(m*m) :: A_a, B_a
+    !    real(q2), device, dimension(3) :: W_d
+    integer, device, dimension(m) :: W_d
+    real, dimension(m) :: W
+    integer :: stat, lwork, lda,bs,ldb,i,j,count
+    real, device, allocatable  :: work_d(:)
+    integer, device :: devInfo, P
+    type(cusolverDnHandle) :: h
+    stat=cusolverDnCreate(h)
+        W_d=0.0
+
+     write(*,*)"start read"
+     open(unit=1,file="mybigfile.txt")
+     do i=1,(m*m)
+     read(1,*)A_a(i)
+     enddo
+     close(unit=1)
+
+     do i=1,10
+     write(*,*)A_a(i)
+     enddo
+     
+
+     write(*,*)"read stuff in"
+     
+
+
+       
+
+     
+
+        A_d = reshape(A_a,(/m,m/))
+	B_a=0.0
+	count = 0
+	do i=1,m
+	j=(i-1)*(m+1) + 1
+	B_a(j)=1.0
+	if(count.le.5)write(*,*),i,j,B_a(j)
+	count = count +1
+	enddo
+
+
+	write(*,*)"diag done"
+        B_d = reshape(B_a,(/m,m/)) 
+
+    lda = m
+    ldb = m
+    bs = 1
+!    A_d(1,1:3)=(/4,1,2/)
+!    A_d(2,1:3)=(/1,-1,1/)
+!    A_d(3,1:3)=(/2,1,3/)    !eigenvalues are 5.84947, 1.44865, -1.29812
+!   A_d(1,1:3)=(/1,0,0/)
+!   A_d(2,1:3)=(/0,1,0/)
+!   A_d(3,1:3)=(/0,0,1/)
+    stat=cusolverDnSgetrf_bufferSize(h, m,  m, A_d, lda, lwork)
+    write(*,*)"first",stat
+    allocate(work_d(lwork))
+    stat=cusolverDnSgetrf(h, m, m, A_d, lda, work_d, W_d, devInfo)
+    write(*,*)"second",stat
+
+
+stat=cusolverDnSgetrs(h,CUBLAS_OP_N,m,m,A_d,lda,W_d,B_d,lda,devInfo)
+write(*,*)"last",stat
+
+info=devInfo
+    stat=cudaDeviceSynchronize()
+
+    A=A_d
+    B=B_d
+
+    do i=1,5
+    write(*,*)(B(i,j),j=1,5)
+    enddo
+    
+    A_a = reshape(A,(/m*m/))
+    B_a = reshape(B,(/m*m/))
+
+    open(unit=2,file="mysolve.txt")
+    do i=1,(m*m)
+    write(2,*)B_a(i)
+    enddo
+    close(unit=2)
+    
+
+    deallocate(work_d)
+    stat=cusolverDnDestroy(h)
+
+    
+end program bigsolve
+

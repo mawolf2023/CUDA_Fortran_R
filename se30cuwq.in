@@ -1,0 +1,124 @@
+rm(list=ls())
+options("sp_evolution_status"=2)
+ptm <- proc.time()
+print("pre init")
+print(date())
+library(methods)
+library(sp)
+library(sf)
+library(gstat)
+library(spacetime)
+library(maptools)
+print("space")
+library(maps)
+library(xts)
+library(automap)
+print("auto")
+
+library("rmpi1")
+library(data.table)
+
+
+
+
+
+
+     
+val1 <- matrix(fread("file5.txt")$V1,ncol=1)
+print("my stuff")
+#n0 <- nrow(val1)/12
+n2 <- length(val1)
+n3 <- n2^2
+#n4 <- 6*n0
+n4 <- 80
+     print("pre alloc1")
+     print(n2)
+      print(date())
+
+
+
+
+
+cv2a <- numeric(length=n2*n4)
+     dlilsuma <- .Fortran("alloc2a",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsuma[1:10])
+     print("after a2")
+     dlilsumb <- .Fortran("alloc2b",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsumb[1:10])
+     print("after b2")
+     dlilsumc <- .Fortran("alloc2c",bigsum=as.single(cv2a),n1=as.integer(n2),n4=as.integer(n4))[[1]]
+     print(dlilsumc[1:10])
+     bigb <- matrix(dlilsuma+dlilsumb+dlilsumc,nrow=n4,ncol=n2,byrow=TRUE)
+     print(bigb[1:5,1:5])
+
+print("alloc2")
+
+lilsuma <- bigb[1:n4,1:n2]
+print("back from all")
+
+print(lilsuma[1:5,1:5])
+     print("real things")
+     print(n2^2)
+dsol <- matrix(fread("mysolve.txt")$V1,ncol=1)
+print(dim(dsol))
+
+
+	dsol1 <- matrix(dsol,nrow=n2,ncol=n2)
+	print(dim(dsol1))
+	print("bigone")
+	print(dsol1[1:10,1:10])
+	lilsum <- as.matrix(lilsuma)
+
+
+
+
+
+ones <- matrix(rep(1,n2),nrow=n2,ncol=1)
+
+
+bigt <- t(ones) %*% dsol1 %*% ones
+bigt.sol <- solve(bigt)
+
+
+bigz <- t(ones) %*% dsol1 %*% val1
+print("bigz")
+print(str(bigz))
+
+mu1 <- bigt.sol %*% bigz
+
+print("mu1")
+print(str(mu1))
+
+
+mu2 <- as.vector(mu1)
+big.mu <- matrix(rep(mu2,n2),nrow=n2,ncol=1)
+lil.mu <- matrix(rep(mu2,n4),nrow=n4,ncol=1)
+
+zsub <- val1 - big.mu
+
+dright <- (lilsum) %*% dsol1 %*% zsub
+
+dfin <- lil.mu + dright
+
+
+
+bdfin <- as.vector(dfin)
+
+
+
+print(bdfin)
+write(bdfin,file="file8.txt",ncol=1)
+
+print(date())
+print(proc.time()-ptm)
+
+
+
+
+
+
+
+
+
+
+

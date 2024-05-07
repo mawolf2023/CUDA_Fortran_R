@@ -1,0 +1,58 @@
+#This part is the same from last month
+#compile R from source (R-4.3.3)
+#go to dir R-4.3.3
+./configure --disable-openmp --with-readline=no
+make
+sudo make install
+
+
+#Note:  no need for the pbd packages any more
+
+#now it's time to install the remaining packages
+#install old maptools
+sudo ~/R-4.3.3/bin/R
+install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
+#This next step takes a really long time
+install.packages(c("sp","gstat","spacetime","xts","automap"),depen=TRUE)
+#this one is pretty long too
+install.packages(c("sf","maps","data.table"),depen=TRUE)
+q()
+
+
+#install a "home grown" package
+sudo ~/R-4.3.3/bin/R CMD INSTALL rmpi1_0.0.0.9000.tar.gz
+
+#Go into se185wq.in and search for "end"
+#update the ending value
+
+#Now run those bad boys:
+#Part 1: note for 5+ years, this can take a very long time (30+min)
+sudo ~/R-4.3.3/bin/R CMD BATCH se185wq.in may0601a.out
+#Part 2
+#We need to update the CUDA Fortran after every se185wq.in run
+#you can do the following
+wc file5.txt
+#get the number of lines
+#Open bigwarm.cuf
+#update lines 133 and 134 with the number of lines from the wc (n1 and n2)
+#compile bigwarm.cuf
+nvfortran bigwarm.cuf -fPIC -mcmodel=medium -o bigwarm
+#Then start that one
+time ./bigwarm &
+
+#While that is running, go into bigsolve.cuf
+#Go to line 9
+#update m with the number of lines from the wc
+#Compile that one
+nvfortran bigsolve.cuf -fPIC -mcmodel=medium -cudalib=cusolver -o bigsolve
+#After ./bigwarm is finished, run
+time ./bigsolve &
+#once that is done, then run the final R script:
+time sudo ~/R-4.3.3/bin/Rscript se30cuwq.in >may0601b.out
+
+#Where do I get the time:
+#Get the time from the output of ./bigwarm, ./bigsolve, and the Rscript
+
+
+
+
