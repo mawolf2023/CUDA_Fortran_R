@@ -1,0 +1,26 @@
+program test
+  use mpi
+  use cudafor
+  implicit none
+  integer  :: nranks, myrank
+  integer :: dev, devNum, local_rank, local_comm, ierr
+
+  call mpi_init(ierr)
+  call mpi_comm_size(mpi_comm_world,nranks,ierr)
+  call mpi_comm_rank(mpi_comm_world,myrank,ierr)
+
+  call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, &
+       MPI_INFO_NULL, local_comm,ierr)
+  call MPI_Comm_rank(local_comm, local_rank,ierr)
+  ierr = cudaGetDeviceCount(devNum)
+  dev = mod(local_rank,devNum)
+  ierr = cudaSetDevice(dev)
+
+  if (local_rank .eq. 0) then
+      print *, "Number of devices: ", devNum
+  endif
+  print *, "Rank #",myrank," using device ", dev
+  call MPI_finalize(ierr)
+
+end program test
+

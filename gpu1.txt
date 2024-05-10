@@ -1,0 +1,11 @@
+ Rank #            8  using device             0
+ Rank #            4  using device             0
+ Rank #            1  using device             0
+ Rank #            5  using device             0
+ Number of devices:             1
+ Rank #            0  using device             0
+ Rank #            7  using device             0
+ Rank #            9  using device             0
+ Rank #            3  using device             0
+ Rank #            2  using device             0
+ Rank #            6  using device             0
