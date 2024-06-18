@@ -2,46 +2,38 @@
   contains
 
   attributes(global) subroutine bigmat(n,x, y, bigz)
-        use cudafor
+    use cudafor
     implicit none
     integer, value :: n
     integer :: tx,ty,k, tc
     real,dimension(:) :: x,y,bigz
 
-          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
-          ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
+    tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+    ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
 
-          if (tx <= n .and. ty <=n) then
-             tc = (ty-1)*n + tx
-             bigz(tc) = ((x(tx)-x(ty))**2 + (y(tx)-y(ty))**2)**0.5
-          end if
+    if (tx <= n .and. ty <=n) then
+       tc = (ty-1)*n + tx
+       bigz(tc) = ((x(tx)-x(ty))**2 + (y(tx)-y(ty))**2)**0.5
+    end if
 
-          
+  end subroutine bigmat
 
-
-
-      end subroutine bigmat
-
-      attributes(global) subroutine bigmatb(n,x, bigz)
-        use cudafor
+  attributes(global) subroutine bigmatb(n,x, bigz)
+    use cudafor
     implicit none
     integer, value :: n
     integer :: tx,ty,k, tc
     real,dimension(:) :: x,bigz
 
-          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
-          ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
-             tc = (ty-1)*n + tx          
-          if (tx <= n .and. ty <=n) then
-             
-             bigz(tc) = ((x(tx)-x(ty))**2)**0.5
+    tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+    ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
+       tc = (ty-1)*n + tx          
+    if (tx <= n .and. ty <=n) then
+       
+       bigz(tc) = ((x(tx)-x(ty))**2)**0.5
 
-          endif
-          
-           
-
-
-      end subroutine bigmatb
+    endif
+  end subroutine bigmatb
 
   attributes(global) subroutine bigmatc(n,x,u,w, bigz,sta)
     implicit none
@@ -51,266 +43,263 @@
     real :: h
     real,dimension(:) :: x,y,bigz,u,w
 
-          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
-          ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
+    tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+    ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
 
-          if (tx <= n .and. ty <=n) then
-             tc = (ty-1)*n + tx
+    if (tx <= n .and. ty <=n) then
+       tc = (ty-1)*n + tx
 
-              h = (((x(tx)-x(ty))**2)*sta) + ((u(tx)-u(ty))**2 + (w(tx)-w(ty))**2) 
-              bigz(tc) = h**0.5
-              end if
-           
-
-
-      end subroutine bigmatc
+        h = (((x(tx)-x(ty))**2)*sta) + ((u(tx)-u(ty))**2 + (w(tx)-w(ty))**2) 
+        bigz(tc) = h**0.5
+    end if
+  end subroutine bigmatc
 
 
       
-      attributes(global) subroutine type1(n,sill_d,rg_d,nug_d,mat1,bigsum_d)
-        implicit none
-        real, value :: sill_d,rg_d,nug_d
-        integer, value :: n
-        integer :: tx,ty,tc
-        real,dimension(:) :: mat1,bigsum_d
+  attributes(global) subroutine type1(n,sill_d,rg_d,nug_d,mat1,bigsum_d)
+    implicit none
+    real, value :: sill_d,rg_d,nug_d
+    integer, value :: n
+    integer :: tx,ty,tc
+    real,dimension(:) :: mat1,bigsum_d
 
-          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
-          ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
+    tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+    ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
 
-          if (tx <= n .and. ty <=n) then
-             tc = (ty-1)*n + tx
-             bigsum_d(tc)=(sill_d)*(1 - exp(-mat1(tc)/rg_d)) + nug_d
+    if (tx <= n .and. ty <=n) then
+       tc = (ty-1)*n + tx
+       bigsum_d(tc)=(sill_d)*(1 - exp(-mat1(tc)/rg_d)) + nug_d
 
-          end if
-        end subroutine type1
+    end if
+  end subroutine type1
 
-        attributes(global) subroutine type2(n,sill_d,rg_d,nug_d,mat1,bigsum)
-          implicit none
-          real,value :: sill_d,rg_d,nug_d
-          integer, value :: n
-          integer :: i,j,k
-          real :: mat1(:,:)
-          real :: bigsum(:)
-          n = size(mat1,1)
-          k=1
-          do i=1,n
-            do j=1,n
-              bigsum(k)= (sill_d)*(1 - exp(-(mat1(i,j)/rg_d)**2)) + nug_d   
-              k=k+1
-            enddo
-          enddo
-        end subroutine type2
+  attributes(global) subroutine type2(n,sill_d,rg_d,nug_d,mat1,bigsum)
+    implicit none
+    real,value :: sill_d,rg_d,nug_d
+    integer, value :: n
+    integer :: i,j,k
+    real :: mat1(:,:)
+    real :: bigsum(:)
+    n = size(mat1,1)
+    k=1
+    do i=1,n
+      do j=1,n
+        bigsum(k)= (sill_d)*(1 - exp(-(mat1(i,j)/rg_d)**2)) + nug_d   
+        k=k+1
+      enddo
+    enddo
+  end subroutine type2
 
-        attributes(global) subroutine type3(n,sill_d,rg_d,nug_d,mat1,bigsum)
-          implicit none
-          real, value :: sill_d,rg_d,nug_d
-          real :: xx,xy
-          integer, value :: n
-        integer :: i,tx,ty,tc
-        real, dimension(:) :: mat1,bigsum
-          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
-          ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
+  attributes(global) subroutine type3(n,sill_d,rg_d,nug_d,mat1,bigsum)
+    implicit none
+    real, value :: sill_d,rg_d,nug_d
+    real :: xx,xy
+    integer, value :: n
+    integer :: i,tx,ty,tc
+    real, dimension(:) :: mat1,bigsum
+    tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+    ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
 
-          if (tx <= n .and. ty<=n) then
-             tc = (ty-1)*n + tx
+    if (tx <= n .and. ty<=n) then
+       tc = (ty-1)*n + tx
 
-                   if(mat1(tc).gt.0)then
-                   if(mat1(tc).le.rg_d)then
-                      xx = mat1(tc)/rg_d
-                      xy = 1.5*xx - 0.5*(xx**3) 
-                      bigsum(tc)= xy*(sill_d) + nug_d
-                      
-                      else
-                            bigsum(tc)=1.0*(sill_d) + nug_d
-                      endif
-                      else
-                         bigsum(tc) = 0.0
-                   endif
+       if(mat1(tc).gt.0)then
+         if(mat1(tc).le.rg_d)then
+            xx = mat1(tc)/rg_d
+            xy = 1.5*xx - 0.5*(xx**3) 
+            bigsum(tc)= xy*(sill_d) + nug_d
+            
+         else
+                  bigsum(tc)=1.0*(sill_d) + nug_d
+         endif
+       else
+         bigsum(tc) = 0.0
+       endif
 
-                   endif
-          end subroutine type3
-        
+     endif
+  end subroutine type3
+  
         
 end module mathOps
 
 program bigwarm
      use mathOps
-        use cudafor !has to go first        
-        implicit none
-        integer, parameter :: n1=35064
-        integer, parameter :: n2=35064**2
-        integer :: err
-        integer :: i,j,k,n3,n4,n5
-        character(len=3) :: st_s,st_t,st_st
-        !integer, device :: n1_d,n2_d
-        real,allocatable :: x(:),y(:),big1(:),big2(:),big3(:)
-        real,allocatable :: xa(:),u(:),w(:)
-        real, dimension(n2) :: bigsum,bigz,bigy,bigx,rv
-        real, dimension(n1,n1) :: mat1,mata,matb
-        real, dimension(n2) :: bigsuma,bigsumb
-        real, device, dimension(n2) :: mat2
-        real, device, dimension(n1) :: x_d, y_d, u_d,w_d
-        !real, device :: sill_d,rg_d,nug_d,st_d
-        real, device, dimension(n2) :: bigsum_d,bigz_d
-        real :: xx,xy,nug,v1,t1,t2, ti1,ti2, tg1, tg2
-        real :: sill_s,rg_s,nug_s,sill_t,rg_t,nug_t
-        real :: sill_st,rg_st,nug_st,stAni
+     use cudafor !has to go first        
+     implicit none
+     integer, parameter :: n1=35064
+     integer, parameter :: n2=35064**2
+     integer :: err
+     integer :: i,j,k,n3,n4,n5
+     character(len=3) :: st_s,st_t,st_st
+     !integer, device :: n1_d,n2_d
+     real,allocatable :: x(:),y(:),big1(:),big2(:),big3(:)
+     real,allocatable :: xa(:),u(:),w(:)
+     real, dimension(n2) :: bigsum,bigz,bigy,bigx,rv
+     real, dimension(n1,n1) :: mat1,mata,matb
+     real, dimension(n2) :: bigsuma,bigsumb
+     real, device, dimension(n2) :: mat2
+     real, device, dimension(n1) :: x_d, y_d, u_d,w_d
+     !real, device :: sill_d,rg_d,nug_d,st_d
+     real, device, dimension(n2) :: bigsum_d,bigz_d
+     real :: xx,xy,nug,v1,t1,t2, ti1,ti2, tg1, tg2
+     real :: sill_s,rg_s,nug_s,sill_t,rg_t,nug_t
+     real :: sill_st,rg_st,nug_st,stAni
 
-        type(dim3) :: grid,blk,grid2
-        grid = dim3(ceiling(real(n1)/16),ceiling(real(n1)/16),1)
-        blk = dim3(16,16,1)
-        grid2 = dim3(ceiling(real(n2)/16),ceiling(real(n2)/16),1)
-        call cpu_time(t1)
-
-
-        call cpu_time(ti1)
-
-        open (unit=1,file="file1.txt")
-        read(1,200)st_s
-        read(1,200)st_t
-        read(1,200)st_st
-        read(1,*)sill_s
-        read(1,*)rg_s
-        read(1,*)nug_s
-        read(1,*)sill_t
-        read(1,*)rg_t
-        read(1,*)nug_t
-        read(1,*)sill_st
-        read(1,*)rg_st
-        read(1,*)nug_st
-        read(1,*)stAni
-        close(unit=1)
+     type(dim3) :: grid,blk,grid2
+     grid = dim3(ceiling(real(n1)/16),ceiling(real(n1)/16),1)
+     blk = dim3(16,16,1)
+     grid2 = dim3(ceiling(real(n2)/16),ceiling(real(n2)/16),1)
+     call cpu_time(t1)
 
 
-200     format(a)
-225     format(f10.2)
-250     format(i5)
+     call cpu_time(ti1)
 
-        allocate(x(n1),y(n1))
-        open(unit=2,file="file2.txt")
-        do i=1,n1
-           read(2,*)x(i),y(i)
-           enddo
-        close(unit=2)   
+     open (unit=1,file="file1.txt")
+     read(1,200)st_s
+     read(1,200)st_t
+     read(1,200)st_st
+     read(1,*)sill_s
+     read(1,*)rg_s
+     read(1,*)nug_s
+     read(1,*)sill_t
+     read(1,*)rg_t
+     read(1,*)nug_t
+     read(1,*)sill_st
+     read(1,*)rg_st
+     read(1,*)nug_st
+     read(1,*)stAni
+     close(unit=1)
 
-        allocate(xa(n1))
-        open(unit=2,file="file11.txt")
-        do i=1,n1
-           read(2,*)xa(i)
-           enddo
-        close(unit=2)   
 
-        allocate(u(n1),w(n1))
-        open(unit=8,file="file2.txt")
-        do i=1,n1
-           read(8,*)u(i),w(i)
-           enddo
-        close(unit=8)   
+200  format(a)
+225  format(f10.2)
+250  format(i5)
 
-        call cpu_time(ti2)
+     allocate(x(n1),y(n1))
+     open(unit=2,file="file2.txt")
+     do i=1,n1
+        read(2,*)x(i),y(i)
+        enddo
+     close(unit=2)   
+
+     allocate(xa(n1))
+     open(unit=2,file="file11.txt")
+     do i=1,n1
+        read(2,*)xa(i)
+        enddo
+     close(unit=2)   
+
+     allocate(u(n1),w(n1))
+     open(unit=8,file="file2.txt")
+     do i=1,n1
+        read(8,*)u(i),w(i)
+        enddo
+     close(unit=8)   
+
+     call cpu_time(ti2)
+     
+     call cpu_time(tg1)
+     x_d = x
+     y_d = y
+     bigz_d = 0.0
+     call bigmat<<<grid,blk>>>(n1,x_d,y_d,bigz_d)
+     !bigz = bigz_d
+
+
+     deallocate(x,y)
+     
+     bigsum_d = 0.0
+     !mat2 = bigz
+     !mat2 = bigz_d
+     
+     if(st_s == "Exp")then
+        call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
+        bigsum = bigsum_d
         
-        call cpu_time(tg1)
-        x_d = x
-        y_d = y
-        bigz_d = 0.0
-        call bigmat<<<grid,blk>>>(n1,x_d,y_d,bigz_d)
-        !bigz = bigz_d
+     else if(st_s == "Gau") then
+!       call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
+       bigsum = bigsum_d
+
+     else if(st_s == "Sph") then
 
 
-        deallocate(x,y)
-        
-        bigsum_d = 0.0
-        !mat2 = bigz
-        !mat2 = bigz_d
-        
-        if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
-           bigsum = bigsum_d
+        call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,bigz_d,bigsum_d)
+        bigsum = bigsum_d
+
+     endif
            
-        else if(st_s == "Gau") then
-!          call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
-          bigsum = bigsum_d
+     err=cudaDeviceSynchronize()
+     write(*,*)"more",bigsum(1:10)
+     
+     write(*,*)"moving"
+     x_d = xa
+     bigz_d = 0.0
+     
+     call bigmatb<<<grid,blk>>>(n1,x_d,bigz_d)
+     write(*,*)"return"
+     !bigy = bigz_d
+     !write(*,*)"next",bigy(1:10)
 
-        else if(st_s == "Sph") then
-
-
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,bigz_d,bigsum_d)
-           bigsum = bigsum_d
-
-        endif
-              
-        err=cudaDeviceSynchronize()
-        write(*,*)"more",bigsum(1:10)
+     bigsum_d = 0.0
+     !mat2 = bigy
+     write(*,*)"checking"
+     
+     if(st_s == "Exp")then
+        call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
+        bigsuma = bigsum_d
         
-        write(*,*)"moving"
-        x_d = xa
-        bigz_d = 0.0
+       else if(st_s == "Gau") then
+!       call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
+       bigsuma = bigsum_d
+
+     else if(st_s == "Sph") then
+
+       
+        call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
+        bigsuma = bigsum_d
+
+     endif
+     
+     ! Not strictly necessary since above copy is synchronous
+     err=cudaDeviceSynchronize()
+     
+     bigsum = bigsum + bigsuma
+     write(*,*)bigsum(1:10)
+     write(*,*)bigsuma(1:10)
+
+
+     x_d = xa
+     u_d = u
+     w_d = w
+     bigz_d = 0.0
+     call bigmatc<<<grid,blk>>>(n1,x_d,u_d,w_d,bigz_d,stAni)
+     !bigx = bigz_d
+
+     bigsum_d = 0.0
+     !mat2 = bigx
+     
+     if(st_s == "Exp")then
+        call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
+        bigsumb = bigsum_d
+
+       else if(st_s == "Gau") then
+ !      call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
+       bigsumb = bigsum_d
+
+     else if(st_s == "Sph") then
+
+
+
+        call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
         
-        call bigmatb<<<grid,blk>>>(n1,x_d,bigz_d)
-        write(*,*)"return"
-        !bigy = bigz_d
-        !write(*,*)"next",bigy(1:10)
+        bigsumb = bigsum_d
 
-        bigsum_d = 0.0
-        !mat2 = bigy
-        write(*,*)"checking"
-        
-        if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
-           bigsuma = bigsum_d
-           
-          else if(st_s == "Gau") then
-!          call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
-          bigsuma = bigsum_d
-
-        else if(st_s == "Sph") then
-
-          
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
-           bigsuma = bigsum_d
-
-        endif
-        
-        ! Not strictly necessary since above copy is synchronous
-        err=cudaDeviceSynchronize()
-        
-        bigsum = bigsum + bigsuma
-        write(*,*)bigsum(1:10)
-        write(*,*)bigsuma(1:10)
-
-
-        x_d = xa
-        u_d = u
-        w_d = w
-        bigz_d = 0.0
-        call bigmatc<<<grid,blk>>>(n1,x_d,u_d,w_d,bigz_d,stAni)
-        !bigx = bigz_d
-
-        bigsum_d = 0.0
-        !mat2 = bigx
-        
-        if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
-           bigsumb = bigsum_d
-
-          else if(st_s == "Gau") then
- !         call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
-          bigsumb = bigsum_d
-
-        else if(st_s == "Sph") then
-
-
-
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
-           
-           bigsumb = bigsum_d
-
-        endif
-      err=cudaDeviceSynchronize()
-      call cpu_time(tg2)
-      write(*,*)bigsumb(1:10)
-      ! This could have been summed on the GPU
-      bigsum = bigsum + bigsumb
+     endif
+     err=cudaDeviceSynchronize()
+     call cpu_time(tg2)
+     write(*,*)bigsumb(1:10)
+     ! This could have been summed on the GPU
+     bigsum = bigsum + bigsumb
 
 
 
@@ -320,11 +309,11 @@ program bigwarm
      enddo
      close(unit=8)
      
-      call cpu_time(t2)
-      write(*,*),'IO time',ti1,ti2,ti2-ti1
-      write(*,*),'GPU time',tg1,tg2,tg2-tg1
-      write(*,*),'Total time',t1,t2,t2-t1
-      end program bigwarm
+     call cpu_time(t2)
+     write(*,*),'IO time',ti1,ti2,ti2-ti1
+     write(*,*),'GPU time',tg1,tg2,tg2-tg1
+     write(*,*),'Total time',t1,t2,t2-t1
+end program bigwarm
       
       
             
