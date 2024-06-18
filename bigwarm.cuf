@@ -4,7 +4,8 @@
   attributes(global) subroutine bigmat(n,x, y, bigz)
         use cudafor
     implicit none
-    integer :: n,tx,ty,k, tc
+    integer, value :: n
+    integer :: tx,ty,k, tc
     real,dimension(:) :: x,y,bigz
 
           tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -24,7 +25,8 @@
       attributes(global) subroutine bigmatb(n,x, bigz)
         use cudafor
     implicit none
-    integer :: n,tx,ty,k, tc
+    integer, value :: n
+    integer :: tx,ty,k, tc
     real,dimension(:) :: x,bigz
 
           tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -43,8 +45,10 @@
 
   attributes(global) subroutine bigmatc(n,x,u,w, bigz,sta)
     implicit none
-    integer :: n,tx,ty,k, tc
-    real :: sta,h
+    integer, value :: n
+    integer :: tx,ty,k, tc
+    real,value :: sta
+    real :: h
     real,dimension(:) :: x,y,bigz,u,w
 
           tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -65,8 +69,9 @@
       
       attributes(global) subroutine type1(n,sill_d,rg_d,nug_d,mat1,bigsum_d)
         implicit none
-        real :: sill_d,rg_d,nug_d
-        integer :: i,j,k,n,tx,ty,tc
+        real, value :: sill_d,rg_d,nug_d
+        integer, value :: n
+        integer :: tx,ty,tc
         real,dimension(:) :: mat1,bigsum_d
 
            tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -81,8 +86,9 @@
 
         attributes(global) subroutine type2(n,sill_d,rg_d,nug_d,mat1,bigsum)
           implicit none
-        real :: sill_d,rg_d,nug_d
-        integer :: i,j,k,n
+        real,value :: sill_d,rg_d,nug_d
+        integer, value :: n
+        integer :: i,j,k
         real :: mat1(:,:)
         real :: bigsum(:)
         n = size(mat1,1)
@@ -97,9 +103,10 @@
 
         attributes(global) subroutine type3(n,sill_d,rg_d,nug_d,mat1,bigsum)
           implicit none
-          real :: sill_d,rg_d,nug_d
+          real, value :: sill_d,rg_d,nug_d
           real :: xx,xy
-        integer :: i,n,tx,ty,tc
+          integer, value :: n
+        integer :: i,tx,ty,tc
         real, dimension(:) :: mat1,bigsum
           tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
           ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
@@ -130,12 +137,12 @@ program bigwarm
      use mathOps
         use cudafor !has to go first        
         implicit none
-	integer, parameter :: n1=35064
-	integer, parameter :: n2=35064**2
+        integer, parameter :: n1=35064
+        integer, parameter :: n2=35064**2
         integer :: err
         integer :: i,j,k,n3,n4,n5
         character(len=3) :: st_s,st_t,st_st
-        integer, device :: n1_d,n2_d
+        !integer, device :: n1_d,n2_d
         real,allocatable :: x(:),y(:),big1(:),big2(:),big3(:)
         real,allocatable :: xa(:),u(:),w(:)
         real, dimension(n2) :: bigsum,bigz,bigy,bigx,rv
@@ -143,7 +150,7 @@ program bigwarm
         real, dimension(n2) :: bigsuma,bigsumb
         real, device, dimension(n2) :: mat2
         real, device, dimension(n1) :: x_d, y_d, u_d,w_d
-        real, device :: sill_d,rg_d,nug_d,st_d
+        !real, device :: sill_d,rg_d,nug_d,st_d
         real, device, dimension(n2) :: bigsum_d,bigz_d
         real :: xx,xy,nug,v1,t1,t2
         real :: sill_s,rg_s,nug_s,sill_t,rg_t,nug_t
@@ -190,25 +197,20 @@ program bigwarm
         
         x_d = x
         y_d = y
-        n1_d = n1
         bigz_d = 0.0
-        call bigmat<<<grid,blk>>>(n1_d,x_d,y_d,bigz_d)
-        bigz = bigz_d
+        call bigmat<<<grid,blk>>>(n1,x_d,y_d,bigz_d)
+        !bigz = bigz_d
 
 
         deallocate(x,y)
         err=cudaDeviceSynchronize()
         
-           n1_d = n1
-           n2_d = n2        
-           sill_d = sill_s
-           rg_d = rg_s
-           nug_d = nug_s
            bigsum_d = 0.0
-           mat2 = bigz
+           !mat2 = bigz
+           mat2 = bigz_d
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
            bigsum = bigsum_d
            
           else if(st_s == "Gau") then
@@ -218,7 +220,7 @@ program bigwarm
         else if(st_s == "Sph") then
 
 
-           call type3<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,mat2,bigsum_d)
            bigsum = bigsum_d
 
               endif
@@ -234,25 +236,19 @@ program bigwarm
 
         write(*,*)"moving"
         x_d = xa
-        n1_d = n1
         bigz_d = 0.0
         
-        call bigmatb<<<grid,blk>>>(n1_d,x_d,bigz_d)
+        call bigmatb<<<grid,blk>>>(n1,x_d,bigz_d)
         write(*,*)"return"
         bigy = bigz_d
         write(*,*)"next",bigy(1:10)
 
-           n1_d = n1
-           n2_d = n2
-           sill_d = sill_s
-           rg_d = rg_s
-           nug_d = nug_s
            bigsum_d = 0.0
            mat2 = bigy
            write(*,*)"checking"
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
            bigsuma = bigsum_d
            
           else if(st_s == "Gau") then
@@ -262,7 +258,7 @@ program bigwarm
         else if(st_s == "Sph") then
 
           
-           call type3<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
            bigsuma = bigsum_d
 
               endif
@@ -281,23 +277,17 @@ program bigwarm
         close(unit=8)   
 
         x_d = xa
-        n1_d = n1
-        st_d = stAni
         u_d = u
         w_d = w
         bigz_d = 0.0
-        call bigmatc<<<grid,blk>>>(n1_d,x_d,u_d,w_d,bigz_d,st_d)
+        call bigmatc<<<grid,blk>>>(n1,x_d,u_d,w_d,bigz_d,stAni)
         bigx = bigz_d
 
-        n2_d = n2
-        sill_d = sill_s
-           rg_d = rg_s
-           nug_d = nug_s
            bigsum_d = 0.0
            mat2 = bigx
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
            bigsumb = bigsum_d
 
           else if(st_s == "Gau") then
@@ -308,7 +298,7 @@ program bigwarm
 
 
 
-           call type3<<<grid,blk>>>(n1_d,sill_d,rg_d,nug_d,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
            
            bigsumb = bigsum_d
 
@@ -318,12 +308,12 @@ program bigwarm
 
 
 
-	open(unit=8,file="mybigfile.txt")
-	do i = 1, n2
-	write(8,*)bigsum(i)
-	enddo
-	close(unit=8)
-	
+     open(unit=8,file="mybigfile.txt")
+     do i = 1, n2
+       write(8,*)bigsum(i)
+     enddo
+     close(unit=8)
+     
       call cpu_time(t2)
       write(*,*),t1,t2,t2-t1
       end program bigwarm
