@@ -207,10 +207,10 @@ program bigwarm
         
            bigsum_d = 0.0
            !mat2 = bigz
-           mat2 = bigz_d
+           !mat2 = bigz_d
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            bigsum = bigsum_d
            
           else if(st_s == "Gau") then
@@ -220,7 +220,7 @@ program bigwarm
         else if(st_s == "Sph") then
 
 
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,bigz_d,bigsum_d)
            bigsum = bigsum_d
 
               endif
@@ -244,11 +244,11 @@ program bigwarm
         write(*,*)"next",bigy(1:10)
 
            bigsum_d = 0.0
-           mat2 = bigy
+           !mat2 = bigy
            write(*,*)"checking"
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigy,bigsum_d)
            bigsuma = bigsum_d
            
           else if(st_s == "Gau") then
@@ -258,7 +258,7 @@ program bigwarm
         else if(st_s == "Sph") then
 
           
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigy,bigsum_d)
            bigsuma = bigsum_d
 
               endif
