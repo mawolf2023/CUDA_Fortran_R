@@ -74,7 +74,7 @@
         integer :: tx,ty,tc
         real,dimension(:) :: mat1,bigsum_d
 
-           tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+          tx = threadIdx%x + (blockIdx%x - 1) * blockDim%x
           ty = threadIdx%y + (blockIdx%y - 1) * blockDim%y
 
           if (tx <= n .and. ty <=n) then
@@ -86,18 +86,18 @@
 
         attributes(global) subroutine type2(n,sill_d,rg_d,nug_d,mat1,bigsum)
           implicit none
-        real,value :: sill_d,rg_d,nug_d
-        integer, value :: n
-        integer :: i,j,k
-        real :: mat1(:,:)
-        real :: bigsum(:)
-        n = size(mat1,1)
-        k=1
-         do i=1,n
+          real,value :: sill_d,rg_d,nug_d
+          integer, value :: n
+          integer :: i,j,k
+          real :: mat1(:,:)
+          real :: bigsum(:)
+          n = size(mat1,1)
+          k=1
+          do i=1,n
             do j=1,n
-             bigsum(k)= (sill_d)*(1 - exp(-(mat1(i,j)/rg_d)**2)) + nug_d   
-             k=k+1
-             enddo
+              bigsum(k)= (sill_d)*(1 - exp(-(mat1(i,j)/rg_d)**2)) + nug_d   
+              k=k+1
+            enddo
           enddo
         end subroutine type2
 
@@ -152,7 +152,7 @@ program bigwarm
         real, device, dimension(n1) :: x_d, y_d, u_d,w_d
         !real, device :: sill_d,rg_d,nug_d,st_d
         real, device, dimension(n2) :: bigsum_d,bigz_d
-        real :: xx,xy,nug,v1,t1,t2
+        real :: xx,xy,nug,v1,t1,t2, ti1,ti2, tg1, tg2
         real :: sill_s,rg_s,nug_s,sill_t,rg_t,nug_t
         real :: sill_st,rg_st,nug_st,stAni
 
@@ -163,6 +163,7 @@ program bigwarm
         call cpu_time(t1)
 
 
+        call cpu_time(ti1)
 
         open (unit=1,file="file1.txt")
         read(1,200)st_s
@@ -192,9 +193,23 @@ program bigwarm
            enddo
         close(unit=2)   
 
+        allocate(xa(n1))
+        open(unit=2,file="file11.txt")
+        do i=1,n1
+           read(2,*)xa(i)
+           enddo
+        close(unit=2)   
 
+        allocate(u(n1),w(n1))
+        open(unit=8,file="file2.txt")
+        do i=1,n1
+           read(8,*)u(i),w(i)
+           enddo
+        close(unit=8)   
+
+        call cpu_time(ti2)
         
-        
+        call cpu_time(tg1)
         x_d = x
         y_d = y
         bigz_d = 0.0
@@ -203,17 +218,16 @@ program bigwarm
 
 
         deallocate(x,y)
-        err=cudaDeviceSynchronize()
         
-           bigsum_d = 0.0
-           !mat2 = bigz
-           !mat2 = bigz_d
+        bigsum_d = 0.0
+        !mat2 = bigz
+        !mat2 = bigz_d
         
         if(st_s == "Exp")then
            call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            bigsum = bigsum_d
            
-          else if(st_s == "Gau") then
+        else if(st_s == "Gau") then
 !          call type2<<<512,4>>>(sill_d,rg_d,nug_d,mat2,bigsum_d)
           bigsum = bigsum_d
 
@@ -223,32 +237,26 @@ program bigwarm
            call type3<<<grid,blk>>>(n1,sill_s,rg_s,nugs_,bigz_d,bigsum_d)
            bigsum = bigsum_d
 
-              endif
+        endif
               
+        err=cudaDeviceSynchronize()
         write(*,*)"more",bigsum(1:10)
         
-        allocate(xa(n1))
-        open(unit=2,file="file11.txt")
-        do i=1,n1
-           read(2,*)xa(i)
-           enddo
-        close(unit=2)   
-
         write(*,*)"moving"
         x_d = xa
         bigz_d = 0.0
         
         call bigmatb<<<grid,blk>>>(n1,x_d,bigz_d)
         write(*,*)"return"
-        bigy = bigz_d
-        write(*,*)"next",bigy(1:10)
+        !bigy = bigz_d
+        !write(*,*)"next",bigy(1:10)
 
-           bigsum_d = 0.0
-           !mat2 = bigy
-           write(*,*)"checking"
+        bigsum_d = 0.0
+        !mat2 = bigy
+        write(*,*)"checking"
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigy,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            bigsuma = bigsum_d
            
           else if(st_s == "Gau") then
@@ -258,36 +266,31 @@ program bigwarm
         else if(st_s == "Sph") then
 
           
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigy,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            bigsuma = bigsum_d
 
-              endif
-              
-              
-              bigsum = bigsum + bigsuma
-              write(*,*)bigsum(1:10)
-              write(*,*)bigsuma(1:10)
-
+        endif
         
-        allocate(u(n1),w(n1))
-        open(unit=8,file="file2.txt")
-        do i=1,n1
-           read(8,*)u(i),w(i)
-           enddo
-        close(unit=8)   
+        ! Not strictly necessary since above copy is synchronous
+        err=cudaDeviceSynchronize()
+        
+        bigsum = bigsum + bigsuma
+        write(*,*)bigsum(1:10)
+        write(*,*)bigsuma(1:10)
+
 
         x_d = xa
         u_d = u
         w_d = w
         bigz_d = 0.0
         call bigmatc<<<grid,blk>>>(n1,x_d,u_d,w_d,bigz_d,stAni)
-        bigx = bigz_d
+        !bigx = bigz_d
 
-           bigsum_d = 0.0
-           mat2 = bigx
+        bigsum_d = 0.0
+        !mat2 = bigx
         
         if(st_s == "Exp")then
-           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
+           call type1<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            bigsumb = bigsum_d
 
           else if(st_s == "Gau") then
@@ -298,13 +301,16 @@ program bigwarm
 
 
 
-           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,mat2,bigsum_d)
+           call type3<<<grid,blk>>>(n1,sill_s,rg_s,nug_s,bigz_d,bigsum_d)
            
            bigsumb = bigsum_d
 
         endif
-        write(*,*)bigsumb(1:10)
-        bigsum = bigsum + bigsumb
+      err=cudaDeviceSynchronize()
+      call cpu_time(tg2)
+      write(*,*)bigsumb(1:10)
+      ! This could have been summed on the GPU
+      bigsum = bigsum + bigsumb
 
 
 
@@ -315,7 +321,9 @@ program bigwarm
      close(unit=8)
      
       call cpu_time(t2)
-      write(*,*),t1,t2,t2-t1
+      write(*,*),'IO time',ti1,ti2,ti2-ti1
+      write(*,*),'GPU time',tg1,tg2,tg2-tg1
+      write(*,*),'Total time',t1,t2,t2-t1
       end program bigwarm
       
       
