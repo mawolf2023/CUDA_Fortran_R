@@ -10,7 +10,7 @@ library(maptools)
 library(maps)
 library(xts)
 library(automap)
-library(pbdDMAT)
+
 
 
 #Set up data set
@@ -50,7 +50,7 @@ print(str(grd))
 
 ###################################################
 start_date <- "1961-01-01"
-end_date <- "1961-03-31"
+end_date <- "1967-12-31"
 wind.data = wind.data[, paste(start_date,end_date,sep="::")]
 n = length(wind.data$values)/12
 tgrd = xts(1:10, seq(min(index(wind.data)), max(index(wind.data)), length=10))
